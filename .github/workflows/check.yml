@@ -10,6 +10,11 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
+    inputs:
+      send_now:
+        description: 'Send immediately (instant test — ignores prayer time)'
+        type: boolean
+        default: false
 
 jobs:
   check:
@@ -23,12 +28,12 @@ jobs:
       - name: Restore WhatsApp auth
         # GitHub Secrets are limited to 48 KB each, and AUTH_BASE64 is
         # usually bigger than that. So it is split into 40 KB parts:
-        # AUTH_BASE64_1, AUTH_BASE64_2, ... (see scripts/split-auth.ps1).
+        # AUTH_BASE64_1, AUTH_BASE64_2, ... up to _10 (see scripts/split-auth.ps1).
         # A single AUTH_BASE64 secret still works too — the parts are
         # just concatenated, empty ones add nothing.
         run: |
           mkdir -p auth
-          echo "${{ secrets.AUTH_BASE64 }}${{ secrets.AUTH_BASE64_1 }}${{ secrets.AUTH_BASE64_2 }}${{ secrets.AUTH_BASE64_3 }}${{ secrets.AUTH_BASE64_4 }}" | base64 -d | tar xz -C auth
+          echo "${{ secrets.AUTH_BASE64 }}${{ secrets.AUTH_BASE64_1 }}${{ secrets.AUTH_BASE64_2 }}${{ secrets.AUTH_BASE64_3 }}${{ secrets.AUTH_BASE64_4 }}${{ secrets.AUTH_BASE64_5 }}${{ secrets.AUTH_BASE64_6 }}${{ secrets.AUTH_BASE64_7 }}${{ secrets.AUTH_BASE64_8 }}${{ secrets.AUTH_BASE64_9 }}${{ secrets.AUTH_BASE64_10 }}" | base64 -d | tar xz -C auth
           ls -la auth
       - name: Check and send if due
         env:
@@ -50,4 +55,7 @@ jobs:
           GROUP_JID: ${{ secrets.GROUP_JID }}
           CAPTION_TEMPLATE: ${{ secrets.CAPTION_TEMPLATE }}
           FRIDAY_TEXT: ${{ secrets.FRIDAY_TEXT }}
-        run: node index.js --check
+        # Manual run with send_now=true sends immediately (instant test).
+        # Scheduled runs always use --check (only in the Maghrib+30m window).
+        run: |
+          if [ "${{ inputs.send_now }}" = "true" ]; then node index.js --send-now; else node index.js --check; fi
