@@ -105,17 +105,16 @@ Free forever, always on, session stays logged in.
 The workflow in `.github/workflows/check.yml` runs every 10 minutes and calls `node index.js --check`.
 The script only sends inside the 15-minute window after Maghrib+30m, and only if it has not sent today.
 
-To use it you must add these GitHub Secrets:
-`GROUP_JID`, `GITHUB_OWNER`, `GITHUB_REPO`, `CAPTION_TEMPLATE`, and `AUTH_BASE64`.
-If you use Cloudinary instead, add `CLOUDINARY_CLOUD_NAME` and set `IMAGE_SOURCE=cloudinary` in the workflow env.
+To use it you must add these GitHub Secrets (Settings > Secrets and variables > Actions):
+`GROUP_JID`, `SUPABASE_URL`, `SUPABASE_BUCKET` (= `QuranWerd`), `SUPABASE_SERVICE_ROLE_KEY`, `CAPTION_TEMPLATE`, `FRIDAY_TEXT`, and `AUTH_BASE64`.
+The workflow already sets `IMAGE_SOURCE=supabase`, `IMAGE_FOLDER` empty (images in bucket root), `IMAGE_EXT=png`.
 
 Make `AUTH_BASE64` after logging in locally:
 ```bash
 tar czf - auth | base64 -w0
 # paste that long string as the AUTH_BASE64 secret
 ```
-Caveats: the session can expire, and `state.json` is not committed back in this workflow,
-so use Option A if you want it to just work every day. GitHub Actions is best for testing the prayer logic.
+Caveats: the session can expire, so use Option A if you want it to just work every day. State is in Supabase (`bot_state`), so it is shared — no double-send.
 
 ### Option C — Your own computer
 Just leave `npm start` running. Works, but stops when the computer sleeps or restarts.
