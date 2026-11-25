@@ -25,6 +25,39 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - name: Verify auth parts (lengths only — values are never printed)
+        # GitHub never shows secret values, only their names.
+        # This step prints only the LENGTH of each part, so you can check
+        # on GitHub that every part arrived: parts 1-6 should be 40000,
+        # the last used part shorter, unused parts 0. A 0 or a short
+        # length in the middle means that secret is missing / truncated.
+        env:
+          P1: ${{ secrets.AUTH_BASE64_1 }}
+          P2: ${{ secrets.AUTH_BASE64_2 }}
+          P3: ${{ secrets.AUTH_BASE64_3 }}
+          P4: ${{ secrets.AUTH_BASE64_4 }}
+          P5: ${{ secrets.AUTH_BASE64_5 }}
+          P6: ${{ secrets.AUTH_BASE64_6 }}
+          P7: ${{ secrets.AUTH_BASE64_7 }}
+          P8: ${{ secrets.AUTH_BASE64_8 }}
+          P9: ${{ secrets.AUTH_BASE64_9 }}
+          P10: ${{ secrets.AUTH_BASE64_10 }}
+          P0: ${{ secrets.AUTH_BASE64 }}
+        run: |
+          echo "single AUTH_BASE64: ${#P0}"
+          echo "part1: ${#P1}"
+          echo "part2: ${#P2}"
+          echo "part3: ${#P3}"
+          echo "part4: ${#P4}"
+          echo "part5: ${#P5}"
+          echo "part6: ${#P6}"
+          echo "part7: ${#P7}"
+          echo "part8: ${#P8}"
+          echo "part9: ${#P9}"
+          echo "part10: ${#P10}"
+          total=$(( ${#P0} + ${#P1} + ${#P2} + ${#P3} + ${#P4} + ${#P5} + ${#P6} + ${#P7} + ${#P8} + ${#P9} + ${#P10} ))
+          echo "total: $total"
+          if [ "$total" -eq 0 ]; then echo "FAIL: no auth parts found in secrets"; exit 1; fi
       - name: Restore WhatsApp auth
         # GitHub Secrets are limited to 48 KB each, and AUTH_BASE64 is
         # usually bigger than that. So it is split into 40 KB parts:
