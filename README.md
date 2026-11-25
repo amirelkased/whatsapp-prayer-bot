@@ -109,10 +109,14 @@ To use it you must add these GitHub Secrets (Settings > Secrets and variables > 
 `GROUP_JID`, `SUPABASE_URL`, `SUPABASE_BUCKET` (= `QuranWerd`), `SUPABASE_SERVICE_ROLE_KEY`, `CAPTION_TEMPLATE`, `FRIDAY_TEXT`, and `AUTH_BASE64`.
 The workflow already sets `IMAGE_SOURCE=supabase`, `IMAGE_FOLDER` empty (images in bucket root), `IMAGE_EXT=png`.
 
-Make `AUTH_BASE64` after logging in locally:
-```bash
-tar czf - auth | base64 -w0
-# paste that long string as the AUTH_BASE64 secret
+Make `AUTH_BASE64` after logging in locally. GitHub Secrets are limited to 48 KB each, and this value is usually bigger, so split it:
+```powershell
+tar -czf auth.tar.gz auth
+powershell -ExecutionPolicy Bypass -File scripts/split-auth.ps1
+# it writes auth_part1.txt, auth_part2.txt, ... (40,000 chars each)
+# paste each file as a secret: AUTH_BASE64_1, AUTH_BASE64_2, ...
+# copy one part: Get-Content auth_part1.txt -Raw | Set-Clipboard
+# then delete the temp files: Remove-Item auth.tar.gz, auth_part*.txt
 ```
 Caveats: the session can expire, so use Option A if you want it to just work every day. State is in Supabase (`bot_state`), so it is shared — no double-send.
 

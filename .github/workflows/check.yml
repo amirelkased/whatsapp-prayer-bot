@@ -21,11 +21,15 @@ jobs:
           node-version: 20
       - run: npm install
       - name: Restore WhatsApp auth
-        env:
-          AUTH_BASE64: ${{ secrets.AUTH_BASE64 }}
+        # GitHub Secrets are limited to 48 KB each, and AUTH_BASE64 is
+        # usually bigger than that. So it is split into 40 KB parts:
+        # AUTH_BASE64_1, AUTH_BASE64_2, ... (see scripts/split-auth.ps1).
+        # A single AUTH_BASE64 secret still works too — the parts are
+        # just concatenated, empty ones add nothing.
         run: |
           mkdir -p auth
-          echo "$AUTH_BASE64" | base64 -d | tar xz -C auth
+          echo "${{ secrets.AUTH_BASE64 }}${{ secrets.AUTH_BASE64_1 }}${{ secrets.AUTH_BASE64_2 }}${{ secrets.AUTH_BASE64_3 }}${{ secrets.AUTH_BASE64_4 }}" | base64 -d | tar xz -C auth
+          ls -la auth
       - name: Check and send if due
         env:
           CITY: Cairo
