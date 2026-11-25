@@ -1,0 +1,51 @@
+name: Check Maghrib +30m and send to WhatsApp
+
+# Runs every 10 minutes. The script itself only sends inside the
+# 15-minute window after Maghrib+30m in Cairo, and only once per day.
+# NOTE: WhatsApp session in ./auth must be restored from a secret.
+# See README.md — the always-on VPS option is more reliable than this.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Restore WhatsApp auth
+        env:
+          AUTH_BASE64: ${{ secrets.AUTH_BASE64 }}
+        run: |
+          mkdir -p auth
+          echo "$AUTH_BASE64" | base64 -d | tar xz -C auth
+      - name: Check and send if due
+        env:
+          CITY: Cairo
+          COUNTRY: Egypt
+          METHOD: 5
+          TIMEZONE: Africa/Cairo
+          PRAYER: Maghrib
+          DELAY_MINUTES: 30
+          WINDOW_MINUTES: 15
+          IMAGE_SOURCE: github
+          GITHUB_OWNER: ${{ secrets.GITHUB_OWNER }}
+          GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+          GITHUB_BRANCH: main
+          IMAGE_FOLDER: quotes
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_FOLDER: quotes
+          IMAGE_EXT: jpg
+          MAX_IMAGES: 999
+          GROUP_JID: ${{ secrets.GROUP_JID }}
+          CAPTION_TEMPLATE: ${{ secrets.CAPTION_TEMPLATE }}
+        run: node index.js --check
+      # state.json is not committed back here on purpose.
+      # If you use GitHub Actions, keep state in a small private repo
+      # and commit it back, or accept that a re-run in the same window
+      # could re-send. The VPS / daemon option avoids this entirely.
