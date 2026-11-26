@@ -1,43 +1,43 @@
 # Run from the bot folder, after scripts/split-auth.ps1:
 #   powershell -ExecutionPolicy Bypass -File scripts/verify-auth-parts.ps1
-#
-# Checks each auth_partN.txt:
-#  1) every part except the last is exactly 40,000 chars
-#  2) joining them gives back the original auth.tar.gz (same length + decodes)
-#  3) the tar lists auth/creds.json (the login file)
-# If any check fails, that part was pasted wrong / truncated / out of order.
+# Checks: joining the parts gives back the original auth.tar.gz,
+# and the tar lists creds.json. ASCII only, no else blocks.
 
-$parts = Get-ChildItem auth_part*.txt | Sort-Object { [int]($_.BaseName -replace 'auth_part','') }
-if (-not $parts) { Write-Host "FAIL: no auth_part*.txt found"; exit 1 }
+$parts = Get-ChildItem auth_part*.txt | Sort-Object Name
+if (-not $parts) {
+  Write-Host "FAIL: no auth_part*.txt found"
+  exit 1
+}
 
-Write-Host "Parts found: $($parts.Count)"
+Write-Host "Parts found:"
 foreach ($p in $parts) {
-  $len = (Get-Content $p.FullName -Raw).Length
-  Write-Host "$($p.Name): $len chars"
+  $content = Get-Content $p.FullName -Raw
+  $len = $content.Length
+  Write-Host $p.Name $len "chars"
 }
 
 $b64 = ""
-foreach ($p in $parts) { $b64 += Get-Content $p.FullName -Raw }
-
-# 1) rejoin must match the original tar
-$orig = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\auth.tar.gz"))
-if ($b64.Length -eq $orig.Length -and $b64 -eq $orig) {
-  Write-Host "PASS: joined parts match auth.tar.gz exactly ($($b64.Length) chars)"
-} else {
-  Write-Host "FAIL: joined length $($b64.Length) vs original $($orig.Length) — a part is missing, truncated, or out of order"
-  exit 1
+foreach ($p in $parts) {
+  $b64 = $b64 + (Get-Content $p.FullName -Raw)
 }
 
-# 2) joined base64 must decode and list creds.json
+$orig = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\auth.tar.gz"))
+Write-Host "Joined length:" $b64.Length
+Write-Host "Original length:" $orig.Length
+if ($b64 -ne $orig) {
+  Write-Host "FAIL: joined parts do not match auth.tar.gz - a part is missing, truncated, or out of order"
+  exit 1
+}
+Write-Host "PASS: joined parts match auth.tar.gz exactly"
+
 [IO.File]::WriteAllBytes("$PWD\verify-auth.tar.gz", [Convert]::FromBase64String($b64))
 $list = tar -tzf verify-auth.tar.gz 2>&1
-if ($list -match 'creds\.json') {
-  Write-Host "PASS: tar contains creds.json"
-  $list | ForEach-Object { Write-Host "  $_" }
-} else {
+$listText = $list -join "`n"
+Write-Host $listText
+if ($listText -notmatch "creds.json") {
   Write-Host "FAIL: tar does not contain creds.json"
-  Write-Host $list
   exit 1
 }
+Write-Host "PASS: tar contains creds.json"
 Remove-Item verify-auth.tar.gz
-Write-Host "All parts OK — safe to paste them as AUTH_BASE64_1, AUTH_BASE64_2, ..."
+Write-Host "All parts OK - safe to paste them as AUTH_BASE64_1, AUTH_BASE64_2, ..."
