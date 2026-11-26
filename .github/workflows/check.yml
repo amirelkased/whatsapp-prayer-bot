@@ -67,7 +67,12 @@ jobs:
         run: |
           mkdir -p auth
           echo "${{ secrets.AUTH_BASE64 }}${{ secrets.AUTH_BASE64_1 }}${{ secrets.AUTH_BASE64_2 }}${{ secrets.AUTH_BASE64_3 }}${{ secrets.AUTH_BASE64_4 }}${{ secrets.AUTH_BASE64_5 }}${{ secrets.AUTH_BASE64_6 }}${{ secrets.AUTH_BASE64_7 }}${{ secrets.AUTH_BASE64_8 }}${{ secrets.AUTH_BASE64_9 }}${{ secrets.AUTH_BASE64_10 }}" | base64 -d | tar xz -C auth
+          # Fix nested folder: `tar -czf auth.tar.gz auth` stores auth/creds.json,
+          # so extracting into auth/ gives auth/auth/creds.json — Baileys
+          # looks in auth/creds.json and would ask for a QR again. Flatten it.
+          if [ -f auth/auth/creds.json ]; then mv auth/auth/* auth/; rmdir auth/auth; fi
           ls -la auth
+          if [ ! -f auth/creds.json ]; then echo "FAIL: auth/creds.json not found after restore — AUTH_BASE64 parts are wrong or empty"; exit 1; fi
       - name: Check and send if due
         env:
           CITY: Cairo

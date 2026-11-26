@@ -1,7 +1,11 @@
 # Run from the bot folder, AFTER npm run login:
-#   tar -czf auth.tar.gz auth
+#   tar -czf auth.tar.gz -C auth .
 #   powershell -ExecutionPolicy Bypass -File scripts/split-auth.ps1
 #
+# NOTE: use `-C auth .` (not `tar -czf auth.tar.gz auth`) so the tar
+# contains creds.json at the top, not auth/creds.json — otherwise the
+# workflow extracts it to auth/auth/creds.json and Baileys asks for a QR again.
+# The workflow also flattens auth/auth/ if it happens, so old parts still work.
 # GitHub Secrets are limited to 48 KB each, and the base64 of auth.tar.gz
 # is usually bigger. This splits it into 40,000-character parts:
 #   auth_part1.txt, auth_part2.txt, ...
